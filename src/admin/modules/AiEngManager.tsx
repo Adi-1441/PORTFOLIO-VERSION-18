@@ -8,6 +8,7 @@ import { Plus, Edit2, Trash2, CheckCircle2, X, Save } from 'lucide-react';
 import { portfolioService } from '../../services/portfolio.service';
 import { adminService } from '../../services/admin.service';
 import { AiEngineering, AiApplicationType } from '../../types/database';
+import { UniversalMediaManager } from '../components/UniversalMediaManager';
 
 export const AiEngManager: React.FC = () => {
   const [entries, setEntries] = useState<AiEngineering[]>([]);
@@ -230,6 +231,28 @@ export const AiEngManager: React.FC = () => {
                   className="form-input"
                 />
               </div>
+
+              {/* Universal Media Gallery Manager */}
+              {editingEntry.id ? (
+                <UniversalMediaManager
+                  entityType="ai_engineering"
+                  entityId={editingEntry.id}
+                />
+              ) : (
+                <div style={{
+                  padding: '1rem',
+                  marginTop: '1rem',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'rgba(6, 11, 20, 0.5)',
+                  border: '1px dashed var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.8rem',
+                  fontFamily: 'var(--font-mono)',
+                  textAlign: 'center',
+                }}>
+                  [TIP] Save this AI record first to begin attaching neural architecture diagrams, convergence plots, and demo videos.
+                </div>
+              )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
                 <button type="button" onClick={() => setEditingEntry(null)} className="btn-secondary">

@@ -7,6 +7,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Brain, Zap, Clock, ShieldCheck } from 'lucide-react';
 import { AiEngineering as AiEngType } from '../../types/database';
+import { UniversalMediaGallery } from '../common/UniversalMediaGallery';
 
 interface AiProps {
   entries: AiEngType[];
@@ -84,9 +85,16 @@ export const AiEngineering: React.FC<AiProps> = ({ entries }) => {
                 </span>
               </div>
 
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', lineHeight: 1.65, marginBottom: '1.75rem' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', lineHeight: 1.65, marginBottom: '1.25rem' }}>
                 {entry.description}
               </p>
+
+              {/* Universal AI Engineering Media Gallery */}
+              <UniversalMediaGallery
+                entityType="ai_engineering"
+                entityId={entry.id}
+                title={entry.title}
+              />
 
               {/* Methodology Specification */}
               {entry.methodology && (

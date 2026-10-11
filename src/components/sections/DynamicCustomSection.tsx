@@ -10,6 +10,7 @@ import { PortfolioSection, PortfolioContentItem, AccentThemeToken } from '../../
 import { portfolioService } from '../../services/portfolio.service';
 import { DynamicIcon } from '../common/DynamicIcon';
 import { useCursor } from '../../context/CursorContext';
+import { UniversalMediaGallery } from '../common/UniversalMediaGallery';
 
 interface DynamicCustomSectionProps {
   section: PortfolioSection;
@@ -307,20 +308,14 @@ export const DynamicCustomSection: React.FC<DynamicCustomSectionProps> = ({
                 </div>
               )}
 
-              {selectedItem.media_url && (
-                <div style={{
-                  marginBottom: '1.5rem',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  border: '1px solid var(--border-steel)',
-                }}>
-                  <img
-                    src={selectedItem.media_url}
-                    alt={selectedItem.title}
-                    style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', display: 'block' }}
-                  />
-                </div>
-              )}
+              {/* Universal Media Gallery Dossier */}
+              <UniversalMediaGallery
+                media={selectedItem.metadata?.gallery}
+                entityType="section_item"
+                entityId={selectedItem.id}
+                title={selectedItem.title}
+                maxPreviewCount={6}
+              />
 
               {selectedItem.body && (
                 <p style={{ fontSize: '0.95rem', lineHeight: 1.8, color: 'var(--text-secondary)', whiteSpace: 'pre-line', marginBottom: '1.5rem' }}>
@@ -382,7 +377,12 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, theme, onSelect, setMode }) =
       }}
     >
       <div>
-        {item.media_url && (
+        {item.metadata?.gallery && item.metadata.gallery.length > 0 ? (
+          <UniversalMediaGallery
+            media={item.metadata.gallery}
+            title={item.title}
+          />
+        ) : item.media_url ? (
           <div style={{
             height: '180px',
             borderRadius: '8px',
@@ -393,10 +393,11 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, theme, onSelect, setMode }) =
             <img
               src={item.media_url}
               alt={item.title}
+              loading="lazy"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           </div>
-        )}
+        ) : null}
 
         {item.subtitle && (
           <div style={{

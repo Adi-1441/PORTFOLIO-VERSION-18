@@ -6,7 +6,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 
-export type CursorPreferenceMode = 'full' | 'minimal' | 'off';
+export type CursorPreferenceMode = 'minimal' | 'full' | 'reticle' | 'off';
 
 export type CursorTelemetryState =
   | 'scan'
@@ -57,34 +57,37 @@ export const normalizeCursorState = (state: CursorTelemetryState): string => {
 
 export const CursorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mode, setModeState] = useState<CursorTelemetryState>('scan');
-  const [coordinates, setCoordinates] = useState({ x: -100, y: -100 });
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [isPointerActive, setIsPointerActive] = useState(false);
 
-  // Initialize preference from localStorage with safe fallback
+  // Initialize preference from localStorage with safe fallback (MINIMAL as default)
   const [cursorPreference, setCursorPreferenceState] = useState<CursorPreferenceMode>(() => {
-    if (typeof window === 'undefined') return 'full';
+    if (typeof window === 'undefined') return 'minimal';
     try {
       const saved = localStorage.getItem(STORAGE_KEY) as CursorPreferenceMode | null;
-      if (saved === 'full' || saved === 'minimal' || saved === 'off') {
+      if (saved === 'minimal' || saved === 'full' || saved === 'reticle' || saved === 'off') {
         return saved;
       }
     } catch {
       // Ignore localStorage errors (private browsing, etc.)
     }
-    return 'full';
+    return 'minimal';
   });
 
-  const latestPos = useRef({ x: -100, y: -100 });
   const pointerRef = useRef<{ x: number; y: number; active: boolean }>({ x: -100, y: -100, active: false });
-  const rafId = useRef<number | null>(null);
 
   // Update body classes for native cursor hiding based on active mode
   const syncBodyClasses = useCallback((pref: CursorPreferenceMode, isTouch: boolean) => {
     if (typeof document === 'undefined') return;
     const body = document.body;
-    body.classList.remove('cursor-mode-full', 'cursor-mode-minimal', 'cursor-mode-off', 'cursor-enabled');
+    body.classList.remove(
+      'cursor-mode-minimal',
+      'cursor-mode-full',
+      'cursor-mode-reticle',
+      'cursor-mode-off',
+      'cursor-enabled'
+    );
 
     if (isTouch) {
       body.classList.add('is-touch-device');
@@ -109,8 +112,9 @@ export const CursorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const cycleCursorPreference = useCallback(() => {
     setCursorPreference(
-      cursorPreference === 'full' ? 'minimal' :
-      cursorPreference === 'minimal' ? 'off' : 'full'
+      cursorPreference === 'minimal' ? 'full' :
+      cursorPreference === 'full' ? 'reticle' :
+      cursorPreference === 'reticle' ? 'off' : 'minimal'
     );
   }, [cursorPreference, setCursorPreference]);
 
@@ -149,47 +153,53 @@ export const CursorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [cursorPreference, syncBodyClasses]);
 
   // Pointer movement tracking with window blur / mouseleave / cancel handling
+  // Uses direct ref updates for pointer coordinates to completely eliminate React re-render thrashing
   useEffect(() => {
     if (isTouchDevice) return;
 
+    const isPointerActiveRef = { current: isPointerActive };
+
     const handlePointerMove = (e: PointerEvent) => {
-      setIsPointerActive(true);
+      if (!isPointerActiveRef.current) {
+        isPointerActiveRef.current = true;
+        setIsPointerActive(true);
+      }
       const clientX = Math.round(e.clientX);
       const clientY = Math.round(e.clientY);
-      latestPos.current = { x: clientX, y: clientY };
       pointerRef.current = { x: clientX, y: clientY, active: true };
-
-      if (!rafId.current) {
-        rafId.current = requestAnimationFrame(() => {
-          setCoordinates(latestPos.current);
-          rafId.current = null;
-        });
-      }
     };
 
     const handleMouseLeave = () => {
-      setIsPointerActive(false);
-      pointerRef.current.active = false;
-      setCoordinates({ x: -100, y: -100 });
+      if (isPointerActiveRef.current) {
+        isPointerActiveRef.current = false;
+        setIsPointerActive(false);
+      }
+      pointerRef.current = { x: -100, y: -100, active: false };
     };
 
     const handleWindowBlur = () => {
-      setIsPointerActive(false);
-      pointerRef.current.active = false;
-      setCoordinates({ x: -100, y: -100 });
+      if (isPointerActiveRef.current) {
+        isPointerActiveRef.current = false;
+        setIsPointerActive(false);
+      }
+      pointerRef.current = { x: -100, y: -100, active: false };
     };
 
     const handlePointerCancel = () => {
-      setIsPointerActive(false);
-      pointerRef.current.active = false;
-      setCoordinates({ x: -100, y: -100 });
+      if (isPointerActiveRef.current) {
+        isPointerActiveRef.current = false;
+        setIsPointerActive(false);
+      }
+      pointerRef.current = { x: -100, y: -100, active: false };
     };
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        setIsPointerActive(false);
-        pointerRef.current.active = false;
-        setCoordinates({ x: -100, y: -100 });
+        if (isPointerActiveRef.current) {
+          isPointerActiveRef.current = false;
+          setIsPointerActive(false);
+        }
+        pointerRef.current = { x: -100, y: -100, active: false };
       }
     };
 
@@ -215,7 +225,6 @@ export const CursorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       window.removeEventListener('pointercancel', handlePointerCancel);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('keydown', handleKeyDown);
-      if (rafId.current) cancelAnimationFrame(rafId.current);
     };
   }, [isTouchDevice, cycleCursorPreference]);
 
@@ -231,7 +240,7 @@ export const CursorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       cursorPreference,
       setCursorPreference,
       cycleCursorPreference,
-      coordinates,
+      coordinates: pointerRef.current,
       isTouchDevice,
       reducedMotion,
       isPointerActive,

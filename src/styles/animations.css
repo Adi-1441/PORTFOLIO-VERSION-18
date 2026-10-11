@@ -102,3 +102,20 @@
   pointer-events: none;
 }
 
+/* Precision Instrument Cursor Dimension Tick Bursts */
+@keyframes cursor-burst-fade {
+  0% {
+    opacity: 1;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+.cursor-burst-tick {
+  animation: cursor-burst-fade 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  transform-origin: center;
+}
+

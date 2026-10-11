@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, ExternalLink, FileText, ChevronRight, CheckCircle2, FlaskConical, Layers, ArrowUpRight, X } from 'lucide-react';
 import { useCursor } from '../../context/CursorContext';
 import { Research as ResearchType } from '../../types/database';
+import { UniversalMediaGallery } from '../common/UniversalMediaGallery';
 
 interface ResearchProps {
   entries: ResearchType[];
@@ -218,6 +219,13 @@ export const Research: React.FC<ResearchProps> = ({ entries }) => {
                       ))}
                     </div>
                   )}
+
+                  {/* Universal Research Media Gallery */}
+                  <UniversalMediaGallery
+                    entityType="research"
+                    entityId={item.id}
+                    title={item.title}
+                  />
                 </div>
 
                 {/* Card Action */}
@@ -364,6 +372,14 @@ export const Research: React.FC<ResearchProps> = ({ entries }) => {
                     </p>
                   </div>
                 )}
+
+                {/* Universal Research Media Dossier */}
+                <UniversalMediaGallery
+                  entityType="research"
+                  entityId={selectedResearch.id}
+                  title={selectedResearch.title}
+                  maxPreviewCount={6}
+                />
 
                 {selectedResearch.objective && (
                   <div>

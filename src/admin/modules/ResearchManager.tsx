@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { Research, ResearchStatus } from '../../types/database';
+import { UniversalMediaManager } from '../components/UniversalMediaManager';
 
 export const ResearchManager: React.FC = () => {
   const [researchList, setResearchList] = useState<Research[]>([]);
@@ -479,6 +480,28 @@ export const ResearchManager: React.FC = () => {
                   className="form-textarea"
                 />
               </div>
+
+              {/* Universal Media Gallery Manager */}
+              {editingResearch?.id ? (
+                <UniversalMediaManager
+                  entityType="research"
+                  entityId={editingResearch.id}
+                />
+              ) : (
+                <div style={{
+                  padding: '1rem',
+                  marginTop: '1rem',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'rgba(6, 11, 20, 0.5)',
+                  border: '1px dashed var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.8rem',
+                  fontFamily: 'var(--font-mono)',
+                  textAlign: 'center',
+                }}>
+                  [TIP] Save this research paper first to begin attaching laboratory experimental photos, micrography, and validation videos.
+                </div>
+              )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
                 <button

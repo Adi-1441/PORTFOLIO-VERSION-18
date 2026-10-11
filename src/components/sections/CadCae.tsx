@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Boxes, Activity, Wind, Flame, Grid, Cpu } from 'lucide-react';
 import { useCursor } from '../../context/CursorContext';
 import { CadCae as CadCaeType } from '../../types/database';
+import { UniversalMediaGallery } from '../common/UniversalMediaGallery';
 
 interface CadCaeProps {
   entries: CadCaeType[];
@@ -94,9 +95,16 @@ export const CadCae: React.FC<CadCaeProps> = ({ entries }) => {
                 </span>
               </div>
 
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', lineHeight: 1.65, marginBottom: '1.75rem' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', lineHeight: 1.65, marginBottom: '1.25rem' }}>
                 {entry.description}
               </p>
+
+              {/* Universal Simulation Media Gallery (FEA/CFD Images & Solver Videos) */}
+              <UniversalMediaGallery
+                entityType="cad_cae"
+                entityId={entry.id}
+                title={entry.title}
+              />
 
               {/* Technical Simulation Telemetry Grid */}
               <div style={{

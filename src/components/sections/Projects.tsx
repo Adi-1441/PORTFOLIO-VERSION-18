@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FolderGit2, ArrowUpRight, X, Wrench, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useCursor } from '../../context/CursorContext';
 import { Project } from '../../types/database';
+import { UniversalMediaGallery } from '../common/UniversalMediaGallery';
 
 interface ProjectsProps {
   projects: Project[];
@@ -99,6 +100,13 @@ export const Projects: React.FC<ProjectsProps> = ({ projects }) => {
                     )}
                   </div>
                 )}
+
+                {/* Universal Media Gallery Previews */}
+                <UniversalMediaGallery
+                  entityType="projects"
+                  entityId={project.id}
+                  title={project.title}
+                />
               </div>
 
               {/* Card Footer: View Inspection Link */}
@@ -194,9 +202,17 @@ export const Projects: React.FC<ProjectsProps> = ({ projects }) => {
               </div>
 
               {/* Full Description */}
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', lineHeight: 1.7, marginBottom: '2rem' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
                 {selectedProject.full_description || selectedProject.short_description}
               </p>
+
+              {/* Universal Media Gallery Dossier */}
+              <UniversalMediaGallery
+                entityType="projects"
+                entityId={selectedProject.id}
+                title={selectedProject.title}
+                maxPreviewCount={6}
+              />
 
               {/* Structured Technical Specifications */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>

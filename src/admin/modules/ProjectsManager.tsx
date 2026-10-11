@@ -8,6 +8,7 @@ import { Plus, Edit2, Trash2, CheckCircle2, X, Save } from 'lucide-react';
 import { portfolioService } from '../../services/portfolio.service';
 import { adminService } from '../../services/admin.service';
 import { Project, ProjectStatus } from '../../types/database';
+import { UniversalMediaManager } from '../components/UniversalMediaManager';
 
 export const ProjectsManager: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -304,6 +305,28 @@ export const ProjectsManager: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Universal Media Gallery Manager */}
+              {editingProject.id ? (
+                <UniversalMediaManager
+                  entityType="projects"
+                  entityId={editingProject.id}
+                />
+              ) : (
+                <div style={{
+                  padding: '1rem',
+                  marginTop: '1rem',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'rgba(6, 11, 20, 0.5)',
+                  border: '1px dashed var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.8rem',
+                  fontFamily: 'var(--font-mono)',
+                  textAlign: 'center',
+                }}>
+                  [TIP] Save this case study first to begin attaching photos and videos to its dossier.
+                </div>
+              )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
                 <button type="button" onClick={() => setEditingProject(null)} className="btn-secondary">

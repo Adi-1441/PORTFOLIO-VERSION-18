@@ -14,6 +14,7 @@ import {
   SectionLayout, SectionStatus, AccentThemeToken
 } from '../../types/database';
 import { DynamicIcon, AVAILABLE_CMS_ICONS } from '../../components/common/DynamicIcon';
+import { UniversalMediaManager } from '../components/UniversalMediaManager';
 
 const SECTION_TYPES: { value: SectionType; label: string }[] = [
   { value: 'custom_cards', label: 'Custom Cards Grid' },
@@ -1008,11 +1009,43 @@ export const SectionBuilder: React.FC = () => {
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">MEDIA URL (IMAGE / DIAGRAM)</label>
+                  {/* Universal Media Gallery Manager */}
+                  {editingItem.id ? (
+                    <UniversalMediaManager
+                      entityType="section_item"
+                      entityId={editingItem.id}
+                      onMediaChanged={(items) => {
+                        const primary = items.find(i => i.is_primary) || items[0];
+                        if (primary) {
+                          setEditingItem({
+                            ...editingItem,
+                            media_url: primary.url,
+                            media_type: primary.type as any,
+                          });
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      padding: '1rem',
+                      marginTop: '0.75rem',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: 'rgba(6, 11, 20, 0.5)',
+                      border: '1px dashed var(--border-subtle)',
+                      color: 'var(--text-muted)',
+                      fontSize: '0.8rem',
+                      fontFamily: 'var(--font-mono)',
+                      textAlign: 'center',
+                    }}>
+                      [TIP] Save this item first to upload photos and videos to its media gallery.
+                    </div>
+                  )}
+
+                  <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                    <label className="form-label">EXTERNAL / FALLBACK MEDIA URL (OPTIONAL)</label>
                     <input
                       type="text"
-                      placeholder="https://... or /assets/..."
+                      placeholder="https://... (auto-filled on media upload or manual external URL)"
                       value={editingItem.media_url || ''}
                       onChange={(e) => setEditingItem({ ...editingItem, media_url: e.target.value })}
                       className="form-input"

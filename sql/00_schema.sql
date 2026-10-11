@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS public.research (
   conclusion text,
   status text NOT NULL DEFAULT 'ongoing' CHECK (status IN ('planned', 'ongoing', 'completed', 'published')),
   publication_info jsonb DEFAULT '{}'::jsonb,
-  references text[] DEFAULT ARRAY[]::text[],
+  "references" text[] DEFAULT ARRAY[]::text[],
   tags text[] DEFAULT ARRAY[]::text[],
   thumbnail_url text,
   featured boolean NOT NULL DEFAULT false,

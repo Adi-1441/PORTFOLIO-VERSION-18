@@ -26,6 +26,11 @@
   --accent-amber: #f59e0b;
   --accent-red: #ef4444;
 
+  /* Precision Instrument Cursor Tokens */
+  --cursor-primary: #00e5ff;
+  --cursor-accent: #f59e0b;
+  --cursor-titanium: #94a3b8;
+
   /* Typography Colors */
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;

@@ -11,6 +11,7 @@ import {
   VisualizationSetting, ProjectMedia, PortfolioSection,
   PortfolioContentItem, Research
 } from '../types/database';
+import { mediaService, UniversalMediaItem } from './media.service';
 import {
   SEED_PROFILE, SEED_ABOUT, SEED_SKILLS, SEED_PROJECTS,
   SEED_CAD_CAE, SEED_PLC, SEED_CERTS, SEED_AI_ENG,
@@ -269,6 +270,29 @@ export const portfolioService = {
     } catch {
       return [];
     }
+  },
+
+  async getCadCaeMedia(cadCaeId: string): Promise<UniversalMediaItem[]> {
+    return mediaService.getWorkMedia('cad_cae', cadCaeId);
+  },
+
+  async getPlcMedia(plcId: string): Promise<UniversalMediaItem[]> {
+    return mediaService.getWorkMedia('plc', plcId);
+  },
+
+  async getResearchMedia(researchId: string): Promise<UniversalMediaItem[]> {
+    return mediaService.getWorkMedia('research', researchId);
+  },
+
+  async getAiEngineeringMedia(aiEngId: string): Promise<UniversalMediaItem[]> {
+    return mediaService.getWorkMedia('ai_engineering', aiEngId);
+  },
+
+  async getWorkMedia(
+    entityType: 'projects' | 'cad_cae' | 'plc' | 'research' | 'ai_engineering' | 'section_item',
+    entityId: string
+  ): Promise<UniversalMediaItem[]> {
+    return mediaService.getWorkMedia(entityType, entityId);
   },
 
   async getCadCae(): Promise<CadCae[]> {

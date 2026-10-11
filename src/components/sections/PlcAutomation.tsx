@@ -7,6 +7,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Sliders, Cpu, ArrowRightLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { PlcAutomation as PlcType } from '../../types/database';
+import { UniversalMediaGallery } from '../common/UniversalMediaGallery';
 
 interface PlcProps {
   entries: PlcType[];
@@ -78,9 +79,16 @@ export const PlcAutomation: React.FC<PlcProps> = ({ entries }) => {
                 </div>
               </div>
 
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', lineHeight: 1.65, marginBottom: '2rem' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', lineHeight: 1.65, marginBottom: '1.25rem' }}>
                 {entry.description}
               </p>
+
+              {/* Universal Automation Media Gallery (Schematics, Ladder Rungs, HMI Videos) */}
+              <UniversalMediaGallery
+                entityType="plc"
+                entityId={entry.id}
+                title={entry.title}
+              />
 
               {/* I/O Channel Mapping Table */}
               <div style={{

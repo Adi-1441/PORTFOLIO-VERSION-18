@@ -1,0 +1,103 @@
+/* ==============================================================================
+   ADITHYA MECHNEXUS V18.1 — RESPONSIVE DESIGN & ADAPTIVE LAYOUTS
+   ============================================================================== */
+
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(1rem, 3.5vw, 2.5rem);
+  padding-right: clamp(1rem, 3.5vw, 2.5rem);
+  box-sizing: border-box;
+}
+
+.section-padding {
+  padding-top: clamp(4.5rem, 8vw, 8.5rem);
+  padding-bottom: clamp(4.5rem, 8vw, 8.5rem);
+  position: relative;
+}
+
+/* Grid Layouts */
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.75rem;
+}
+
+.grid-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.grid-three-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.75rem;
+}
+
+/* Desktop Wide vs Compact */
+@media (min-width: 1320px) {
+  .nav-desktop-compact {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1319px) and (min-width: 1025px) {
+  .nav-desktop-wide {
+    display: none !important;
+  }
+}
+
+/* Tablet & Mobile Breakpoints */
+@media (max-width: 1024px) {
+  .grid-three-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid-two-col {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1025px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-cards {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  .grid-three-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .section-padding {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+}

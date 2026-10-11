@@ -1,0 +1,8 @@
+# ==============================================================================
+# ADITHYA MECHNEXUS V18.2 — SUPABASE LOCAL & DEPLOYMENT CONFIGURATION
+# ==============================================================================
+
+project_id = "adithya-mechnexus-v18"
+
+[functions.send-contact-email]
+verify_jwt = false

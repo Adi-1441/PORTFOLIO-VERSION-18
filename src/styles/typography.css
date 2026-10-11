@@ -1,0 +1,108 @@
+/* ==============================================================================
+   ADITHYA MECHNEXUS V18.0 — TYPOGRAPHY SYSTEM
+   Orbitron (Display/Headers) • Inter (Content) • JetBrains Mono (Telemetry/HUD)
+   ============================================================================== */
+
+/* Section Pre-Titles & Technical Labels */
+.hud-tag {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid var(--border-cyan);
+  border-radius: var(--radius-xs);
+  margin-bottom: 0.75rem;
+}
+
+.hud-tag::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--accent-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--accent-cyan);
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.title-hero {
+  font-size: clamp(2.5rem, 5.5vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.title-hero-accent {
+  background: var(--grad-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 25px rgba(0, 229, 255, 0.35));
+}
+
+.section-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.75rem);
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.section-subtitle {
+  font-family: var(--font-body);
+  font-size: clamp(0.95rem, 1.2vw, 1.125rem);
+  color: var(--text-secondary);
+  max-width: 680px;
+  line-height: 1.6;
+}
+
+/* Monospace Telemetry & Measurements */
+.telemetry-text {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.telemetry-highlight {
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.code-block {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  background: rgba(4, 8, 16, 0.85);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  overflow-x: auto;
+  color: #38bdf8;
+}
+
+/* Engineering Vernier Coordinates */
+.vernier-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

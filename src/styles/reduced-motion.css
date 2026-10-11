@@ -1,0 +1,31 @@
+/* ==============================================================================
+   ADITHYA MECHNEXUS V18.0 — REDUCED MOTION SPECIFICATION
+   Accessibility compliant: disables distracting motion when requested by user OS.
+   ============================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .custom-cursor,
+  .cursor-trail {
+    display: none !important;
+  }
+
+  * {
+    cursor: auto !important;
+  }
+
+  .anim-float,
+  .anim-rotate-slow,
+  .anim-rotate-reverse,
+  .anim-pulse-border {
+    animation: none !important;
+  }
+}

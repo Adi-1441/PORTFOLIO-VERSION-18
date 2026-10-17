@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Layers, Plus, Edit3, Trash2, Copy, ArrowUp, ArrowDown, Eye, EyeOff,
-  CheckCircle2, AlertCircle, Save, X, Navigation, Layout, Palette, FileText
+  CheckCircle2, AlertCircle, Save, X, Navigation, Layout, Palette, FileText, Image as ImageIcon
 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import {
@@ -66,6 +66,7 @@ export const SectionBuilder: React.FC = () => {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [editingItem, setEditingItem] = useState<PortfolioContentItem | null>(null);
   const [itemFormOpen, setItemFormOpen] = useState(false);
+  const [mediaModalItem, setMediaModalItem] = useState<PortfolioContentItem | null>(null);
 
   useEffect(() => {
     loadSections();
@@ -232,8 +233,8 @@ export const SectionBuilder: React.FC = () => {
       const res = await adminService.createContentItem(payload);
       if (res.success && res.data) {
         setContentItems([...contentItems, res.data]);
-        setItemFormOpen(false);
-        showFeedback('success', 'Content item deployed.');
+        setEditingItem(res.data);
+        showFeedback('success', 'Content item deployed! You can now attach photos and videos to its media gallery below.');
       } else {
         showFeedback('error', res.error || 'Failed to create item.');
       }
@@ -936,6 +937,27 @@ export const SectionBuilder: React.FC = () => {
 
                     <div style={{ display: 'flex', gap: '6px' }}>
                       <button
+                        type="button"
+                        onClick={() => setMediaModalItem(item)}
+                        title="Manage Photos & Videos"
+                        style={{
+                          background: 'rgba(0, 229, 255, 0.08)',
+                          border: '1px solid rgba(0, 229, 255, 0.25)',
+                          color: 'var(--accent-cyan)',
+                          borderRadius: '4px',
+                          padding: '5px 8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '11px',
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
+                        <ImageIcon size={13} />
+                        <span>MEDIA</span>
+                      </button>
+                      <button
                         onClick={() => {
                           setEditingItem(item);
                           setItemFormOpen(true);
@@ -1070,6 +1092,75 @@ export const SectionBuilder: React.FC = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Media Upload Modal for Content Item */}
+      {mediaModalItem && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          padding: '1.5rem',
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '900px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '2rem',
+            border: '1px solid var(--border-cyan)',
+            boxShadow: '0 0 40px rgba(0, 229, 255, 0.15)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-medium)', paddingBottom: '1rem' }}>
+              <div>
+                <div className="hud-tag" style={{ color: 'var(--accent-cyan)' }}>ITEM MEDIA DOSSIER</div>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, margin: '4px 0 0' }}>
+                  {mediaModalItem.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMediaModalItem(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <UniversalMediaManager
+              entityType="section_item"
+              entityId={mediaModalItem.id}
+              onMediaChanged={(items) => {
+                const primary = items.find(i => i.is_primary) || items[0];
+                if (primary) {
+                  setContentItems(prev => prev.map(i => i.id === mediaModalItem.id ? { ...i, media_url: primary.url, media_type: primary.type as any } : i));
+                }
+              }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setMediaModalItem(null)}
+                className="btn-primary"
+                style={{ fontSize: '0.8rem' }}
+              >
+                DONE / CLOSE
+              </button>
+            </div>
           </div>
         </div>
       )}

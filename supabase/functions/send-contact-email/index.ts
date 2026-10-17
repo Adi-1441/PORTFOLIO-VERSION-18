@@ -197,8 +197,8 @@ Deno.serve(async (req: Request) => {
 
     // ── 5. Send Email Notification via Resend API ────────────────────────
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    const notificationEmail = Deno.env.get('NOTIFICATION_EMAIL');
-    const fromEmail = Deno.env.get('FROM_EMAIL') || 'MECHNEXUS Contact <onboarding@resend.dev>';
+    const notificationEmail = Deno.env.get('NOTIFICATION_EMAIL')?.trim() || 'adithya.g1441@gmail.com';
+    const fromEmail = Deno.env.get('FROM_EMAIL')?.trim() || 'MECHNEXUS Contact <onboarding@resend.dev>';
 
     let emailSent = false;
     let emailError: string | null = null;
@@ -206,9 +206,6 @@ Deno.serve(async (req: Request) => {
     if (!resendApiKey) {
       console.warn('[RESEND API KEY NOT SET] Server secret RESEND_API_KEY is not configured. Email notification skipped.');
       emailError = 'RESEND_API_KEY secret is not configured on the server.';
-    } else if (!notificationEmail) {
-      console.warn('[NOTIFICATION_EMAIL NOT SET] Server secret NOTIFICATION_EMAIL is not configured. Email notification skipped.');
-      emailError = 'NOTIFICATION_EMAIL secret is not configured on the server.';
     } else {
       try {
         const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
@@ -288,6 +285,19 @@ Deno.serve(async (req: Request) => {
           </div>
         `;
 
+        const emailText = [
+          'ADITHYA MECHNEXUS — INCOMING CONTACT TRANSMISSION',
+          '==================================================',
+          `Sender:    ${sanitizeSingleLine(name)}`,
+          `Email:     ${sanitizeSingleLine(email)}`,
+          `Subject:   ${sanitizeSingleLine(subject)}`,
+          `Timestamp: ${timestamp}`,
+          '--------------------------------------------------',
+          'Message Content:',
+          message,
+          '==================================================',
+        ].join('\n');
+
         const resendResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -299,6 +309,8 @@ Deno.serve(async (req: Request) => {
             to: [notificationEmail],
             subject: `[MECHNEXUS] New Contact: ${sanitizeSingleLine(subject)} — from ${sanitizeSingleLine(name)}`,
             html: emailHtml,
+            text: emailText,
+            replyTo: sanitizeSingleLine(email),
             reply_to: sanitizeSingleLine(email),
           }),
         });

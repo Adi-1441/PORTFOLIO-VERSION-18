@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  BookOpen, Plus, Edit3, Trash2, CheckCircle2, AlertCircle, Save, X, ExternalLink
+  BookOpen, Plus, Edit3, Trash2, CheckCircle2, AlertCircle, Save, X, ExternalLink, Image as ImageIcon
 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { Research, ResearchStatus } from '../../types/database';
@@ -18,6 +18,8 @@ export const ResearchManager: React.FC = () => {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingResearch, setEditingResearch] = useState<Research | null>(null);
+  const [editorTab, setEditorTab] = useState<'details' | 'media'>('details');
+  const [mediaModalResearch, setMediaModalResearch] = useState<Research | null>(null);
   const [tagsInput, setTagsInput] = useState('');
   const [refsInput, setRefsInput] = useState('');
   const [doiInput, setDoiInput] = useState('');
@@ -40,6 +42,7 @@ export const ResearchManager: React.FC = () => {
 
   const handleOpenEdit = (res: Research) => {
     setEditingResearch(res);
+    setEditorTab('details');
     setTagsInput((res.tags || []).join(', '));
     setRefsInput((res.references || []).join('\n'));
     setDoiInput(res.publication_info?.doi || '');
@@ -70,6 +73,7 @@ export const ResearchManager: React.FC = () => {
       created_at: '',
       updated_at: '',
     });
+    setEditorTab('details');
     setTagsInput('');
     setRefsInput('');
     setDoiInput('');
@@ -127,8 +131,9 @@ export const ResearchManager: React.FC = () => {
       const result = await adminService.createResearch(createPayload);
       if (result.success && result.data) {
         setResearchList([...researchList, result.data]);
-        setModalOpen(false);
-        showFeedback('success', `Study "${result.data.title}" deployed.`);
+        setEditingResearch(result.data);
+        setEditorTab('media');
+        showFeedback('success', `Study "${result.data.title}" deployed! You can now attach experimental photos and validation videos below.`);
       } else {
         showFeedback('error', result.error || 'Failed to create research.');
       }
@@ -190,6 +195,7 @@ export const ResearchManager: React.FC = () => {
             <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '1px' }}>
               <th style={{ padding: '0.75rem 0.5rem' }}>TITLE & ABSTRACT</th>
               <th style={{ padding: '0.75rem 0.5rem' }}>STATUS</th>
+              <th style={{ padding: '0.75rem 0.5rem' }}>MEDIA DOSSIER</th>
               <th style={{ padding: '0.75rem 0.5rem' }}>TAGS</th>
               <th style={{ padding: '0.75rem 0.5rem' }}>FEATURED</th>
               <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>ACTIONS</th>
@@ -229,6 +235,29 @@ export const ResearchManager: React.FC = () => {
                   }}>
                     {res.status}
                   </span>
+                </td>
+
+                <td style={{ padding: '0.75rem 0.5rem', verticalAlign: 'middle' }}>
+                  <button
+                    type="button"
+                    onClick={() => setMediaModalResearch(res)}
+                    className="btn-secondary"
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '0.75rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: 'var(--accent-cyan)',
+                      borderColor: 'rgba(0, 229, 255, 0.4)',
+                      background: 'rgba(0, 229, 255, 0.08)',
+                      cursor: 'pointer',
+                    }}
+                    title="Open research experimental media upload studio"
+                  >
+                    <ImageIcon size={13} />
+                    <span>PHOTOS & VIDEOS</span>
+                  </button>
                 </td>
 
                 <td style={{ padding: '0.75rem 0.5rem', verticalAlign: 'middle' }}>
@@ -345,6 +374,95 @@ export const ResearchManager: React.FC = () => {
             <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1.5rem' }}>
               {editingResearch.id ? `EDIT INVESTIGATION: ${editingResearch.title}` : 'DEPLOY RESEARCH INVESTIGATION'}
             </h2>
+
+            {/* Editor Tabs */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-medium)', paddingBottom: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setEditorTab('details')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  backgroundColor: editorTab === 'details' ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
+                  border: `1px solid ${editorTab === 'details' ? 'var(--border-cyan)' : 'transparent'}`,
+                  color: editorTab === 'details' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>1. SCIENTIFIC SPECIFICATIONS</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorTab('media')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  backgroundColor: editorTab === 'media' ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
+                  border: `1px solid ${editorTab === 'media' ? 'var(--border-cyan)' : 'transparent'}`,
+                  color: editorTab === 'media' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <ImageIcon size={14} />
+                <span>2. PHOTOS & VIDEOS DOSSIER</span>
+              </button>
+            </div>
+
+            {editorTab === 'media' ? (
+              <div>
+                {editingResearch.id ? (
+                  <UniversalMediaManager
+                    entityType="research"
+                    entityId={editingResearch.id}
+                  />
+                ) : (
+                  <div style={{
+                    padding: '2.5rem 1.5rem',
+                    textAlign: 'center',
+                    backgroundColor: 'rgba(6, 11, 20, 0.6)',
+                    border: '1px dashed var(--border-cyan)',
+                    borderRadius: '8px',
+                    margin: '1rem 0',
+                  }}>
+                    <ImageIcon size={36} style={{ margin: '0 auto 12px', color: 'var(--accent-cyan)', opacity: 0.8 }} />
+                    <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      Step 1 Required Before Uploading Media
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '480px', margin: '0 auto 1.25rem' }}>
+                      Please switch to "1. SCIENTIFIC SPECIFICATIONS" to enter a title and click "PERSIST RESEARCH DOSSIER". Once saved, this study's database ID will unlock the 10-photo and 3-video upload studio.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setEditorTab('details')}
+                      className="btn-primary"
+                      style={{ fontSize: '0.8rem' }}
+                    >
+                      GO TO SPECIFICATIONS
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                  <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">
+                    CLOSE EDITOR
+                  </button>
+                </div>
+              </div>
+            ) : (
 
             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div className="form-group">
@@ -520,6 +638,70 @@ export const ResearchManager: React.FC = () => {
                 </button>
               </div>
             </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Media Upload Modal */}
+      {mediaModalResearch && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1.5rem',
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '900px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '2rem',
+            border: '1px solid var(--border-cyan)',
+            boxShadow: '0 0 40px rgba(0, 229, 255, 0.15)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-medium)', paddingBottom: '1rem' }}>
+              <div>
+                <div className="hud-tag" style={{ color: 'var(--accent-cyan)' }}>RESEARCH MEDIA DOSSIER</div>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, margin: '4px 0 0' }}>
+                  {mediaModalResearch.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMediaModalResearch(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <UniversalMediaManager
+              entityType="research"
+              entityId={mediaModalResearch.id}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setMediaModalResearch(null)}
+                className="btn-primary"
+                style={{ fontSize: '0.8rem' }}
+              >
+                DONE / CLOSE
+              </button>
+            </div>
           </div>
         </div>
       )}

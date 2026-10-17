@@ -4,7 +4,7 @@
 // ==============================================================================
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle2, X, Save } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, X, Save, Image as ImageIcon } from 'lucide-react';
 import { portfolioService } from '../../services/portfolio.service';
 import { adminService } from '../../services/admin.service';
 import { Project, ProjectStatus } from '../../types/database';
@@ -14,6 +14,8 @@ export const ProjectsManager: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
+  const [editorTab, setEditorTab] = useState<'details' | 'media'>('details');
+  const [mediaModalProject, setMediaModalProject] = useState<Project | null>(null);
   const [toolsInput, setToolsInput] = useState('');
   const [materialsInput, setMaterialsInput] = useState('');
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export const ProjectsManager: React.FC = () => {
 
   const handleEdit = (project: Project) => {
     setEditingProject(project);
+    setEditorTab('details');
     setToolsInput(project.tools_software?.join(', ') || '');
     setMaterialsInput(project.materials?.join(', ') || '');
   };
@@ -87,10 +90,16 @@ export const ProjectsManager: React.FC = () => {
     }
 
     if (result.success) {
-      setSaveStatus('Project saved successfully.');
-      setEditingProject(null);
       await loadProjects();
-      setTimeout(() => setSaveStatus(null), 3000);
+      if (!editingProject.id && (result as any).data) {
+        setEditingProject((result as any).data);
+        setEditorTab('media');
+        setSaveStatus('Project created! You can now upload photos and videos to this dossier below.');
+      } else {
+        setEditingProject(null);
+        setSaveStatus('Project saved successfully.');
+      }
+      setTimeout(() => setSaveStatus(null), 4000);
     } else {
       alert(`Save error: ${result.error}`);
     }
@@ -159,14 +168,103 @@ export const ProjectsManager: React.FC = () => {
           overflowY: 'auto',
         }}>
           <div className="glass-panel-elevated" style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '2.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>
-                {editingProject.id ? 'Edit Case Study' : 'Create New Project'}
-              </h2>
-              <button onClick={() => setEditingProject(null)} style={{ color: 'var(--text-secondary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <span className="vernier-badge" style={{ color: 'var(--accent-cyan)' }}>CASE STUDY EDITOR</span>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', marginTop: '4px' }}>
+                  {editingProject.id ? `Edit: ${editingProject.title || 'Case Study'}` : 'Create New Project'}
+                </h2>
+              </div>
+              <button onClick={() => setEditingProject(null)} style={{ color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
+
+            {/* Editor Navigation Tabs */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setEditorTab('details')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  backgroundColor: editorTab === 'details' ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
+                  border: `1px solid ${editorTab === 'details' ? 'var(--border-cyan)' : 'transparent'}`,
+                  color: editorTab === 'details' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                1. CASE STUDY SPECIFICATIONS
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorTab('media')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  backgroundColor: editorTab === 'media' ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
+                  border: `1px solid ${editorTab === 'media' ? 'var(--border-cyan)' : 'transparent'}`,
+                  color: editorTab === 'media' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <ImageIcon size={14} />
+                <span>2. PHOTOS & VIDEOS DOSSIER</span>
+              </button>
+            </div>
+
+            {editorTab === 'media' ? (
+              <div>
+                {editingProject.id ? (
+                  <UniversalMediaManager
+                    entityType="projects"
+                    entityId={editingProject.id}
+                  />
+                ) : (
+                  <div style={{
+                    padding: '2.5rem 1.5rem',
+                    textAlign: 'center',
+                    backgroundColor: 'rgba(6, 11, 20, 0.6)',
+                    border: '1px dashed var(--border-cyan)',
+                    borderRadius: '8px',
+                    margin: '1rem 0',
+                  }}>
+                    <ImageIcon size={36} style={{ margin: '0 auto 12px', color: 'var(--accent-cyan)', opacity: 0.8 }} />
+                    <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      Step 1 Required Before Uploading Media
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '480px', margin: '0 auto 1.25rem' }}>
+                      Please switch to "1. CASE STUDY SPECIFICATIONS" to provide a title and click "SAVE CASE STUDY". Once saved, this project's database ID will unlock the 10-photo and 3-video upload studio.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setEditorTab('details')}
+                      className="btn-primary"
+                      style={{ fontSize: '0.8rem' }}
+                    >
+                      GO TO SPECIFICATIONS
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                  <button type="button" onClick={() => setEditingProject(null)} className="btn-secondary">
+                    CLOSE EDITOR
+                  </button>
+                </div>
+              </div>
+            ) : (
 
             <form onSubmit={handleSave}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
@@ -338,6 +436,70 @@ export const ProjectsManager: React.FC = () => {
                 </button>
               </div>
             </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Media Upload Modal */}
+      {mediaModalProject && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1.5rem',
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '900px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '2rem',
+            border: '1px solid var(--border-cyan)',
+            boxShadow: '0 0 40px rgba(0, 229, 255, 0.15)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-medium)', paddingBottom: '1rem' }}>
+              <div>
+                <div className="hud-tag" style={{ color: 'var(--accent-cyan)' }}>UNIVERSAL MEDIA DOSSIER</div>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, margin: '4px 0 0' }}>
+                  {mediaModalProject.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMediaModalProject(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <UniversalMediaManager
+              entityType="projects"
+              entityId={mediaModalProject.id}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setMediaModalProject(null)}
+                className="btn-primary"
+                style={{ fontSize: '0.8rem' }}
+              >
+                DONE / CLOSE
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -350,6 +512,7 @@ export const ProjectsManager: React.FC = () => {
               <th style={{ padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>TITLE</th>
               <th style={{ padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>CATEGORY</th>
               <th style={{ padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>STATUS</th>
+              <th style={{ padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>MEDIA DOSSIER</th>
               <th style={{ padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>TOOLS</th>
               <th style={{ padding: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'right' }}>ACTIONS</th>
             </tr>
@@ -364,12 +527,34 @@ export const ProjectsManager: React.FC = () => {
                     {project.status.toUpperCase()}
                   </span>
                 </td>
+                <td style={{ padding: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setMediaModalProject(project)}
+                    className="btn-secondary"
+                    style={{
+                      padding: '5px 12px',
+                      fontSize: '0.75rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: 'var(--accent-cyan)',
+                      borderColor: 'rgba(0, 229, 255, 0.4)',
+                      background: 'rgba(0, 229, 255, 0.08)',
+                      cursor: 'pointer',
+                    }}
+                    title="Open photo & video upload studio for this project"
+                  >
+                    <ImageIcon size={14} />
+                    <span>PHOTOS & VIDEOS</span>
+                  </button>
+                </td>
                 <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{project.tools_software?.slice(0, 2).join(', ') || '—'}</td>
                 <td style={{ padding: '1rem', textAlign: 'right' }}>
-                  <button onClick={() => handleEdit(project)} style={{ marginRight: '0.5rem', color: 'var(--accent-cyan)' }}>
+                  <button onClick={() => handleEdit(project)} style={{ marginRight: '0.5rem', color: 'var(--accent-cyan)' }} title="Edit Specifications">
                     <Edit2 size={16} />
                   </button>
-                  <button onClick={() => handleDelete(project.id, project.title)} style={{ color: '#f87171' }}>
+                  <button onClick={() => handleDelete(project.id, project.title)} style={{ color: '#f87171' }} title="Delete Project">
                     <Trash2 size={16} />
                   </button>
                 </td>

@@ -19,6 +19,15 @@ interface UniversalMediaManagerProps {
   onMediaChanged?: (items: UniversalMediaItem[]) => void;
 }
 
+export interface QueuedMediaFile {
+  id: string;
+  file: File;
+  type: 'image' | 'video';
+  previewUrl?: string;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  errorMessage?: string;
+}
+
 export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
   entityType,
   entityId,
@@ -30,6 +39,10 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
   const [uploadProgressText, setUploadProgressText] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Staging upload queue for multi-file batch upload
+  const [uploadQueue, setUploadQueue] = useState<QueuedMediaFile[]>([]);
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
   // Replacement state
   const [replacingItem, setReplacingItem] = useState<UniversalMediaItem | null>(null);
@@ -44,12 +57,18 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
   const videoInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
 
-  // Derived counts
+  // Derived counts (taking already-uploaded files + currently queued active files into account)
   const imageCount = mediaList.filter(m => m.type === 'image').length;
   const videoCount = mediaList.filter(m => m.type === 'video').length;
 
-  const isImageLimitReached = imageCount >= MEDIA_CONFIG.maxImagesPerWork;
-  const isVideoLimitReached = videoCount >= MEDIA_CONFIG.maxVideosPerWork;
+  const queuedImagesCount = uploadQueue.filter(q => q.type === 'image' && q.status !== 'error').length;
+  const queuedVideosCount = uploadQueue.filter(q => q.type === 'video' && q.status !== 'error').length;
+
+  const totalImageCount = imageCount + queuedImagesCount;
+  const totalVideoCount = videoCount + queuedVideosCount;
+
+  const isImageLimitReached = totalImageCount >= MEDIA_CONFIG.maxImagesPerWork;
+  const isVideoLimitReached = totalVideoCount >= MEDIA_CONFIG.maxVideosPerWork;
 
   // Load existing media on mount or when entityId changes
   const loadMedia = async () => {
@@ -76,61 +95,181 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
     setTimeout(() => setSuccessMessage(null), 3500);
   };
 
-  // 1. FILE UPLOAD HANDLER
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
-    const file = e.target.files?.[0];
-    // Reset file input value so selecting the same file again triggers onChange
+  // Cleanup object URLs when queue unmounts
+  useEffect(() => {
+    return () => {
+      uploadQueue.forEach(item => {
+        if (item.previewUrl) {
+          try { URL.revokeObjectURL(item.previewUrl); } catch {}
+        }
+      });
+    };
+  }, []);
+
+  // 1. MULTI-FILE SELECTION HANDLER (Supports selecting up to 10 images / 3 videos simultaneously)
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
+    const rawFiles = e.target.files ? Array.from(e.target.files) : [];
+    // Reset file input value immediately so selecting the exact same files triggers onChange
     e.target.value = '';
 
-    if (!file) return;
+    if (rawFiles.length === 0) return;
 
-    // Check count limits
-    if (type === 'image' && isImageLimitReached) {
-      setErrorMessage(`Image limit reached (${MEDIA_CONFIG.maxImagesPerWork}/${MEDIA_CONFIG.maxImagesPerWork}). Remove an existing image first.`);
-      return;
-    }
-    if (type === 'video' && isVideoLimitReached) {
-      setErrorMessage(`Video limit reached (${MEDIA_CONFIG.maxVideosPerWork}/${MEDIA_CONFIG.maxVideosPerWork}). Remove an existing video first.`);
-      return;
-    }
+    // Remaining capacity check: Max allowed - already uploaded - already queued
+    const currentUploaded = mediaList.filter(m => m.type === type).length;
+    const currentActiveQueued = uploadQueue.filter(q => q.type === type && q.status !== 'error').length;
+    const maxAllowed = type === 'image' ? MEDIA_CONFIG.maxImagesPerWork : MEDIA_CONFIG.maxVideosPerWork;
+    const remainingCapacity = Math.max(0, maxAllowed - currentUploaded - currentActiveQueued);
 
-    // Pre-upload size and MIME validation
-    const validation = validateMediaFile(file, type);
-    if (!validation.valid) {
-      setErrorMessage(validation.error || 'Invalid file.');
+    if (remainingCapacity <= 0) {
+      setErrorMessage(
+        `${type === 'image' ? 'Image' : 'Video'} capacity reached (${maxAllowed}/${maxAllowed}). ` +
+        `Already stored: ${currentUploaded}${currentActiveQueued > 0 ? `, queued: ${currentActiveQueued}` : ''}. ` +
+        `Remove an existing file before selecting more.`
+      );
       return;
     }
 
-    setUploadingType(type);
-    setUploadProgressText(`Uploading ${type === 'image' ? 'photograph' : 'engineering video'} (${formatBytes(file.size)})...`);
+    let filesToProcess = rawFiles;
+    let rejectedOverCapacityCount = 0;
+
+    if (rawFiles.length > remainingCapacity) {
+      filesToProcess = rawFiles.slice(0, remainingCapacity);
+      rejectedOverCapacityCount = rawFiles.length - remainingCapacity;
+    }
+
+    const newQueueItems: QueuedMediaFile[] = [];
+    const validationErrors: string[] = [];
+
+    for (const file of filesToProcess) {
+      const validation = validateMediaFile(file, type);
+      if (!validation.valid) {
+        validationErrors.push(`${file.name}: ${validation.error || 'Invalid file format or size'}`);
+        continue;
+      }
+
+      const previewUrl = type === 'image' ? URL.createObjectURL(file) : undefined;
+      newQueueItems.push({
+        id: `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        file,
+        type,
+        previewUrl,
+        status: 'pending',
+      });
+    }
+
+    if (newQueueItems.length > 0) {
+      setUploadQueue(prev => [...prev, ...newQueueItems]);
+    }
+
+    // Inform user of results: accepted vs rejected
+    if (rejectedOverCapacityCount > 0 || validationErrors.length > 0) {
+      const notices: string[] = [];
+      if (rejectedOverCapacityCount > 0) {
+        notices.push(`${rejectedOverCapacityCount} file(s) omitted (exceeded remaining limit of ${remainingCapacity}).`);
+      }
+      if (validationErrors.length > 0) {
+        notices.push(`${validationErrors.length} file(s) rejected: ${validationErrors.join(' | ')}`);
+      }
+      setErrorMessage(`Selection notice: ${notices.join(' ')}`);
+      if (newQueueItems.length > 0) {
+        showSuccess(`Added ${newQueueItems.length} valid ${type}(s) to upload queue.`);
+      }
+    } else {
+      showSuccess(`Added ${newQueueItems.length} ${type}(s) to upload queue. Click "CONFIRM & UPLOAD ALL" to process.`);
+      setErrorMessage(null);
+    }
+  };
+
+  const handleRemoveFromQueue = (id: string) => {
+    if (isBatchProcessing) return;
+    setUploadQueue(prev => {
+      const target = prev.find(item => item.id === id);
+      if (target?.previewUrl) {
+        try { URL.revokeObjectURL(target.previewUrl); } catch {}
+      }
+      return prev.filter(item => item.id !== id);
+    });
+  };
+
+  const handleClearQueue = () => {
+    if (isBatchProcessing) return;
+    uploadQueue.forEach(item => {
+      if (item.previewUrl) {
+        try { URL.revokeObjectURL(item.previewUrl); } catch {}
+      }
+    });
+    setUploadQueue([]);
+  };
+
+  const handleExecuteBatchUpload = async () => {
+    const itemsToUpload = uploadQueue.filter(q => q.status === 'pending' || q.status === 'error');
+    if (itemsToUpload.length === 0 || isBatchProcessing) return;
+
+    setIsBatchProcessing(true);
     setErrorMessage(null);
 
-    try {
-      const isFirstItem = mediaList.length === 0;
-      const res = await mediaService.uploadWorkMedia({
-        file,
-        entityType,
-        entityId,
-        type,
-        caption: file.name.replace(/\.[^/.]+$/, ''),
-        altText: file.name.replace(/\.[^/.]+$/, ''),
-        isPrimary: isFirstItem && type === 'image',
-        currentCount: mediaList.length,
-      });
+    let currentMedia = [...mediaList];
+    let successCount = 0;
+    let failCount = 0;
 
-      if (res.success && res.data) {
-        const updated = [...mediaList, res.data];
-        setMediaList(updated);
-        onMediaChanged?.(updated);
-        showSuccess(`Successfully uploaded ${file.name}`);
-      } else {
-        setErrorMessage(res.error || 'Upload failed.');
+    for (let i = 0; i < itemsToUpload.length; i++) {
+      const item = itemsToUpload[i];
+
+      // Mark current item as uploading
+      setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'uploading' } : q));
+      setUploadingType(item.type);
+      setUploadProgressText(
+        `Uploading ${i + 1}/${itemsToUpload.length}: ${item.file.name} (${formatBytes(item.file.size)})...`
+      );
+
+      const isFirstItem = currentMedia.length === 0 && item.type === 'image';
+
+      try {
+        const res = await mediaService.uploadWorkMedia({
+          file: item.file,
+          entityType,
+          entityId,
+          type: item.type,
+          caption: item.file.name.replace(/\.[^/.]+$/, ''),
+          altText: item.file.name.replace(/\.[^/.]+$/, ''),
+          isPrimary: isFirstItem,
+          currentCount: currentMedia.length,
+        });
+
+        if (res.success && res.data) {
+          currentMedia = [...currentMedia, res.data];
+          setMediaList(currentMedia);
+          onMediaChanged?.(currentMedia);
+          successCount++;
+          // Revoke preview URL if any
+          if (item.previewUrl) {
+            try { URL.revokeObjectURL(item.previewUrl); } catch {}
+          }
+          setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'success' } : q));
+        } else {
+          failCount++;
+          setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', errorMessage: res.error || 'Upload failed' } : q));
+        }
+      } catch (err: any) {
+        failCount++;
+        setUploadQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', errorMessage: err.message || 'Pipeline error' } : q));
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Media upload pipeline failed.');
-    } finally {
-      setUploadingType(null);
-      setUploadProgressText(null);
+    }
+
+    setUploadingType(null);
+    setUploadProgressText(null);
+    setIsBatchProcessing(false);
+
+    if (failCount === 0) {
+      showSuccess(`Successfully uploaded all ${successCount} file(s)!`);
+      // Clear completed items from queue
+      setUploadQueue([]);
+    } else if (successCount > 0) {
+      // Partial success: keep failed items in queue so user can retry, remove succeeded items
+      setUploadQueue(prev => prev.filter(q => q.status === 'error'));
+      setErrorMessage(`${successCount} file(s) uploaded successfully. ${failCount} file(s) failed. Review errors and click "RETRY FAILED FILES".`);
+    } else {
+      setErrorMessage(`All ${failCount} file(s) failed to upload. Check connection or storage permissions and retry.`);
     }
   };
 
@@ -309,7 +448,14 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
             color: isImageLimitReached ? '#f87171' : 'var(--accent-cyan, #00e5ff)',
           }}>
             <ImageIcon size={14} />
-            <span>Images: {imageCount} / {MEDIA_CONFIG.maxImagesPerWork}</span>
+            <span>
+              Images: {imageCount} / {MEDIA_CONFIG.maxImagesPerWork}
+              {queuedImagesCount > 0 && (
+                <span style={{ opacity: 0.85, marginLeft: '4px', fontSize: '0.7rem' }}>
+                  (+{queuedImagesCount} staged)
+                </span>
+              )}
+            </span>
           </div>
 
           {/* Videos Counter */}
@@ -326,7 +472,14 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
             color: isVideoLimitReached ? '#f87171' : '#38bdf8',
           }}>
             <VideoIcon size={14} />
-            <span>Videos: {videoCount} / {MEDIA_CONFIG.maxVideosPerWork}</span>
+            <span>
+              Videos: {videoCount} / {MEDIA_CONFIG.maxVideosPerWork}
+              {queuedVideosCount > 0 && (
+                <span style={{ opacity: 0.85, marginLeft: '4px', fontSize: '0.7rem' }}>
+                  (+{queuedVideosCount} staged)
+                </span>
+              )}
+            </span>
           </div>
         </div>
       </div>
@@ -372,21 +525,23 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
       )}
 
       {/* Upload Action Buttons */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '1.5rem' }}>
-        {/* Hidden File Inputs */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '1.25rem' }}>
+        {/* Hidden File Inputs with HTML multiple attribute for batch Windows File Explorer selection */}
         <input
           ref={imageInputRef}
           type="file"
+          multiple
           accept="image/jpeg,image/png,image/webp,image/gif"
           style={{ display: 'none' }}
-          onChange={(e) => handleFileUpload(e, 'image')}
+          onChange={(e) => handleFilesSelected(e, 'image')}
         />
         <input
           ref={videoInputRef}
           type="file"
+          multiple
           accept="video/mp4,video/webm"
           style={{ display: 'none' }}
-          onChange={(e) => handleFileUpload(e, 'video')}
+          onChange={(e) => handleFilesSelected(e, 'video')}
         />
         <input
           ref={replaceInputRef}
@@ -398,7 +553,7 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
         {/* Upload Image Button */}
         <button
           type="button"
-          disabled={isImageLimitReached || uploadingType !== null}
+          disabled={isImageLimitReached || isBatchProcessing || uploadingType !== null}
           onClick={() => imageInputRef.current?.click()}
           style={{
             display: 'flex',
@@ -409,22 +564,22 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
             fontSize: '0.75rem',
             fontFamily: 'var(--font-mono, monospace)',
             fontWeight: 600,
-            cursor: isImageLimitReached || uploadingType !== null ? 'not-allowed' : 'pointer',
+            cursor: isImageLimitReached || isBatchProcessing || uploadingType !== null ? 'not-allowed' : 'pointer',
             backgroundColor: isImageLimitReached ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 229, 255, 0.12)',
             border: `1px solid ${isImageLimitReached ? 'rgba(255, 255, 255, 0.1)' : 'var(--border-cyan, rgba(0, 229, 255, 0.4))'}`,
             color: isImageLimitReached ? 'var(--text-muted, #64748b)' : 'var(--accent-cyan, #00e5ff)',
             transition: 'all 0.18s ease',
           }}
-          title={isImageLimitReached ? 'Maximum 10 images limit reached. Remove an image to upload another.' : 'Upload Image (Max 15MB)'}
+          title={isImageLimitReached ? 'Maximum 10 images limit reached. Remove an image to upload another.' : 'Select one or more images (Ctrl+click / Shift+click up to 10 images, max 15MB each)'}
         >
           {uploadingType === 'image' ? <Loader2 size={14} className="anim-rotate-slow" /> : <Upload size={14} />}
-          <span>{isImageLimitReached ? 'IMAGE LIMIT REACHED (10/10)' : '+ UPLOAD PHOTO (MAX 10)'}</span>
+          <span>{isImageLimitReached ? 'IMAGE LIMIT REACHED (10/10)' : '+ SELECT PHOTOS (MULTI-FILE)'}</span>
         </button>
 
         {/* Upload Video Button */}
         <button
           type="button"
-          disabled={isVideoLimitReached || uploadingType !== null}
+          disabled={isVideoLimitReached || isBatchProcessing || uploadingType !== null}
           onClick={() => videoInputRef.current?.click()}
           style={{
             display: 'flex',
@@ -435,16 +590,16 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
             fontSize: '0.75rem',
             fontFamily: 'var(--font-mono, monospace)',
             fontWeight: 600,
-            cursor: isVideoLimitReached || uploadingType !== null ? 'not-allowed' : 'pointer',
+            cursor: isVideoLimitReached || isBatchProcessing || uploadingType !== null ? 'not-allowed' : 'pointer',
             backgroundColor: isVideoLimitReached ? 'rgba(255, 255, 255, 0.03)' : 'rgba(56, 189, 248, 0.12)',
             border: `1px solid ${isVideoLimitReached ? 'rgba(255, 255, 255, 0.1)' : 'rgba(56, 189, 248, 0.4)'}`,
             color: isVideoLimitReached ? 'var(--text-muted, #64748b)' : '#38bdf8',
             transition: 'all 0.18s ease',
           }}
-          title={isVideoLimitReached ? 'Maximum 3 videos limit reached. Remove a video to upload another.' : 'Upload Video (Max 100MB)'}
+          title={isVideoLimitReached ? 'Maximum 3 videos limit reached. Remove a video to upload another.' : 'Select one or more videos (up to 3 videos, max 100MB each)'}
         >
           {uploadingType === 'video' ? <Loader2 size={14} className="anim-rotate-slow" /> : <VideoIcon size={14} />}
-          <span>{isVideoLimitReached ? 'VIDEO LIMIT REACHED (3/3)' : '+ UPLOAD VIDEO (MAX 3)'}</span>
+          <span>{isVideoLimitReached ? 'VIDEO LIMIT REACHED (3/3)' : '+ SELECT VIDEOS (MULTI-FILE)'}</span>
         </button>
 
         {uploadProgressText && (
@@ -462,6 +617,216 @@ export const UniversalMediaManager: React.FC<UniversalMediaManagerProps> = ({
           </span>
         )}
       </div>
+
+      {/* Staging Queue HUD Panel (Multi-file batch preview, removal & batch upload) */}
+      {uploadQueue.length > 0 && (
+        <div style={{
+          backgroundColor: 'rgba(3, 7, 15, 0.95)',
+          border: '1px solid var(--border-cyan, rgba(0, 229, 255, 0.4))',
+          borderRadius: '8px',
+          padding: '1.25rem',
+          marginBottom: '1.5rem',
+          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6)',
+        }}>
+          {/* Queue Header & Actions */}
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '1rem',
+            borderBottom: '1px solid rgba(148, 163, 184, 0.15)',
+            paddingBottom: '0.75rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="vernier-badge" style={{ color: 'var(--accent-cyan, #00e5ff)' }}>
+                STAGING UPLOAD QUEUE
+              </span>
+              <span style={{
+                fontFamily: 'var(--font-mono, monospace)',
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary, #94a3b8)',
+              }}>
+                [{uploadQueue.length} file(s) staged]
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                type="button"
+                disabled={isBatchProcessing}
+                onClick={handleClearQueue}
+                style={{
+                  background: 'none',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '4px',
+                  color: '#f87171',
+                  padding: '5px 10px',
+                  fontSize: '0.7rem',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  cursor: isBatchProcessing ? 'not-allowed' : 'pointer',
+                  opacity: isBatchProcessing ? 0.5 : 1,
+                }}
+              >
+                CLEAR QUEUE
+              </button>
+
+              <button
+                type="button"
+                disabled={isBatchProcessing}
+                onClick={handleExecuteBatchUpload}
+                style={{
+                  backgroundColor: 'var(--accent-cyan, #00e5ff)',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: '#03070f',
+                  padding: '6px 14px',
+                  fontSize: '0.75rem',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontWeight: 700,
+                  cursor: isBatchProcessing ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  opacity: isBatchProcessing ? 0.65 : 1,
+                  boxShadow: '0 0 12px rgba(0, 229, 255, 0.35)',
+                }}
+              >
+                {isBatchProcessing ? (
+                  <>
+                    <Loader2 size={13} className="anim-rotate-slow" />
+                    <span>UPLOADING BATCH...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={13} />
+                    <span>START BATCH UPLOAD ({uploadQueue.length})</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Staged Items Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gap: '10px',
+          }}>
+            {uploadQueue.map((item) => {
+              const isErr = item.status === 'error';
+              const isDone = item.status === 'success';
+              const isUp = item.status === 'uploading';
+
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    backgroundColor: 'rgba(11, 19, 34, 0.8)',
+                    border: `1px solid ${isErr ? '#ef4444' : isDone ? '#10b981' : isUp ? 'var(--accent-cyan, #00e5ff)' : 'rgba(148, 163, 184, 0.15)'}`,
+                    borderRadius: '6px',
+                    padding: '8px',
+                    position: 'relative',
+                  }}
+                >
+                  {/* Thumbnail / Icon */}
+                  <div style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    backgroundColor: '#000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    {item.type === 'image' && item.previewUrl ? (
+                      <img
+                        src={item.previewUrl}
+                        alt={item.file.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <VideoIcon size={18} color="#38bdf8" />
+                    )}
+                  </div>
+
+                  {/* File Metadata */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      color: 'var(--text-primary, #f1f5f9)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {item.file.name}
+                    </div>
+                    <div style={{
+                      fontSize: '0.65rem',
+                      color: 'var(--text-muted, #64748b)',
+                      fontFamily: 'var(--font-mono, monospace)',
+                      marginTop: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}>
+                      <span>{formatBytes(item.file.size)}</span>
+                      <span>•</span>
+                      <span style={{
+                        color: isErr ? '#f87171' : isDone ? '#34d399' : isUp ? 'var(--accent-cyan, #00e5ff)' : 'var(--text-secondary, #94a3b8)',
+                        fontWeight: 600,
+                      }}>
+                        {isUp ? 'UPLOADING...' : isDone ? 'COMPLETED' : isErr ? 'FAILED' : 'QUEUED'}
+                      </span>
+                    </div>
+                    {item.errorMessage && (
+                      <div style={{
+                        fontSize: '0.65rem',
+                        color: '#f87171',
+                        marginTop: '2px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }} title={item.errorMessage}>
+                        {item.errorMessage}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Remove Button */}
+                  {!isBatchProcessing && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFromQueue(item.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted, #64748b)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'color 0.15s ease',
+                      }}
+                      title="Remove from queue"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Media Thumbnails Grid */}
       {loading && mediaList.length === 0 ? (

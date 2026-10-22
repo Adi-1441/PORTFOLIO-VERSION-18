@@ -19,6 +19,7 @@ import { Research } from '../components/sections/Research';
 import { Resume } from '../components/sections/Resume';
 import { Connections } from '../components/sections/Connections';
 import { Contact } from '../components/sections/Contact';
+import { QrCodeSection } from '../components/sections/QrCodeSection';
 import { DynamicSectionRenderer } from '../components/sections/DynamicSectionRenderer';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { SEOHead } from '../components/common/SEOHead';
@@ -119,23 +120,26 @@ export const PortfolioPage: React.FC = () => {
       {/* Main Content Sections */}
       <main style={{ position: 'relative', zIndex: 10 }}>
         {sections.length > 0 ? (
-          sections.map((sec) => (
-            <DynamicSectionRenderer
-              key={sec.id}
-              section={sec}
-              profile={profile}
-              about={about}
-              skills={skills}
-              projects={projects}
-              cadCae={cadCae}
-              plc={plc}
-              certs={certs}
-              aiEng={aiEng}
-              articles={articles}
-              research={research}
-              connections={connections}
-            />
-          ))
+          <>
+            {sections.map((sec) => (
+              <DynamicSectionRenderer
+                key={sec.id}
+                section={sec}
+                profile={profile}
+                about={about}
+                skills={skills}
+                projects={projects}
+                cadCae={cadCae}
+                plc={plc}
+                certs={certs}
+                aiEng={aiEng}
+                articles={articles}
+                research={research}
+                connections={connections}
+              />
+            ))}
+            {!sections.some((s) => s.slug === 'qr-code' || s.slug === 'qr') && <QrCodeSection />}
+          </>
         ) : (
           /* Safe Fallback */
           <>
@@ -152,6 +156,7 @@ export const PortfolioPage: React.FC = () => {
             {visibility.resume !== false && profile && <Resume profile={profile} />}
             {visibility.connections !== false && connections.length > 0 && <Connections connections={connections} />}
             {visibility.contact !== false && <Contact />}
+            <QrCodeSection />
           </>
         )}
       </main>

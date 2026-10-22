@@ -23,6 +23,7 @@ import { Research } from './Research';
 import { Resume } from './Resume';
 import { Connections } from './Connections';
 import { Contact } from './Contact';
+import { QrCodeSection } from './QrCodeSection';
 import { DynamicCustomSection } from './DynamicCustomSection';
 
 export interface DynamicSectionRendererProps {
@@ -99,6 +100,10 @@ export const DynamicSectionRenderer: React.FC<DynamicSectionRendererProps> = ({
 
     case 'contact':
       return <Contact />;
+
+    case 'qr-code':
+    case 'qr':
+      return <QrCodeSection />;
 
     default:
       // Handle custom section types or any admin-created sections

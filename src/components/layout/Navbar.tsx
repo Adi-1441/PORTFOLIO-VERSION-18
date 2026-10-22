@@ -5,7 +5,7 @@
 // ==============================================================================
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, Shield, Cpu, ChevronRight, ChevronDown, ExternalLink } from 'lucide-react';
+import { Menu, X, Shield, Cpu, ChevronRight, ChevronDown, ExternalLink, QrCode } from 'lucide-react';
 import { useCursor } from '../../context/CursorContext';
 import { Link } from 'react-router-dom';
 import { portfolioService } from '../../services/portfolio.service';
@@ -25,6 +25,7 @@ const DEFAULT_FALLBACK_NAV: NavigationItem[] = [
   { id: '11', label: 'RESUME', href: '#resume', display_order: 10, enabled: true, created_at: '', updated_at: '' },
   { id: '12', label: 'CONNECTIONS', href: '#connections', display_order: 11, enabled: true, created_at: '', updated_at: '' },
   { id: '13', label: 'CONTACT', href: '#contact', display_order: 12, enabled: true, created_at: '', updated_at: '' },
+  { id: '14', label: 'QR CODE', href: '#qr-code', display_order: 13, enabled: true, created_at: '', updated_at: '' },
 ];
 
 export const Navbar: React.FC = () => {
@@ -43,7 +44,15 @@ export const Navbar: React.FC = () => {
       try {
         const items = await portfolioService.getNavigation();
         if (isMounted && items && items.length > 0) {
-          setNavItems(items);
+          const hasQr = items.some(i => i.href === '#qr-code' || i.href === '/qr');
+          if (!hasQr) {
+            setNavItems([
+              ...items,
+              { id: 'nav-qr', label: 'QR CODE', href: '#qr-code', display_order: 99, enabled: true, created_at: '', updated_at: '' },
+            ]);
+          } else {
+            setNavItems(items);
+          }
         }
       } catch (err) {
         console.error('Failed to load navigation items:', err);
@@ -374,6 +383,31 @@ export const Navbar: React.FC = () => {
                 )}
               </div>
             )}
+
+            {/* Quick Access QR Code Scanner Terminal */}
+            <a
+              href="#qr-code"
+              onClick={(e) => handleNavClick(e, '#qr-code')}
+              onMouseEnter={() => setMode('button')}
+              onMouseLeave={() => setMode('default')}
+              title="Quick Access: Optical QR Code"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '30px',
+                height: '30px',
+                borderRadius: 'var(--radius-xs)',
+                backgroundColor: 'rgba(0, 229, 255, 0.08)',
+                border: '1px solid rgba(0, 229, 255, 0.3)',
+                color: 'var(--accent-cyan)',
+                marginLeft: '0.25rem',
+                flexShrink: 0,
+                textDecoration: 'none',
+              }}
+            >
+              <QrCode size={14} />
+            </a>
 
             {/* Admin Direct Access */}
             <Link

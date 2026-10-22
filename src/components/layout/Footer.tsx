@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, ArrowUp, Shield, Lock, FileText, Send, Share2 } from 'lucide-react';
+import { Cpu, ArrowUp, Shield, Lock, FileText, Send, Share2, QrCode } from 'lucide-react';
 import { useCursor } from '../../context/CursorContext';
 
 export const Footer: React.FC = () => {
@@ -109,6 +109,11 @@ export const Footer: React.FC = () => {
               <a href="#resume" style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <FileText size={12} color="var(--accent-cyan)" />
                 <span>RESUME</span>
+              </a>
+              <span style={{ color: 'var(--text-muted)' }}>•</span>
+              <a href="#qr-code" style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <QrCode size={12} color="var(--accent-cyan)" />
+                <span>QR CODE</span>
               </a>
             </div>
           </div>

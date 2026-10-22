@@ -13,6 +13,7 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 // Public Pages
 import { IntroPage } from './pages/IntroPage';
 import { PortfolioPage } from './pages/PortfolioPage';
+import { QrCodePage } from './pages/QrCodePage';
 
 // Admin Architecture
 import { AdminGuard } from './admin/AdminGuard';
@@ -60,6 +61,9 @@ export const App: React.FC = () => {
 
               {/* Main Laboratory Portfolio */}
               <Route path="/portfolio" element={<PortfolioPage />} />
+
+              {/* Standalone Optical Handshake QR Terminal */}
+              <Route path="/qr" element={<QrCodePage />} />
 
               {/* Admin Auth Endpoints */}
               <Route path="/admin/login" element={<AdminLogin />} />
